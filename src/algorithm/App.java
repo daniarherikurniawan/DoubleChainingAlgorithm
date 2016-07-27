@@ -7,176 +7,163 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.nio.file.Files;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.KeyGenerator;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+
+import anotherAlgorithm.AES;
+import anotherAlgorithm.TripleDESTest;
+import commonOperation.analysisOperation;
+import commonOperation.fileOperation;
 import operationModel.modeCBC;
-import operationModel.modeCFB;
-import operationModel.modeECB;
 
 public class App {
 	/*Path to open File*/
 //	final static String mainPath = "/media/daniar/myPassport/WorkPlace/Windows/NewAlgorithmKripto/file/";
 	final static String mainPath = "file/";
 	
+	private static analysisOperation analysisOp = new analysisOperation();
+	private static fileOperation fileOp = new fileOperation();
+	static String cipherText1 = "ChiperTextCBC.txt";
+	static String cipherText2 = "ChiperTextCBC2.txt";
+	static String plainText1 = "PlainText.txt";
+	static String plainText2 = "PlainText2.txt";
+	static String resultText1 = "ResultTextCBC.txt";
+	static String resultText2 = "ResultTextCBC2.txt";
+	
 	public static void main(String args[]) { 
-		/*Key should be per 8 characters length, min 8 and max 32*/
-		String key = new String("hanubrhf");
-
-		runCBC(key);
-		runCBC2(key);
-		compareTwoFile("ChiperTextCBC.txt","ChiperTextCBC2.txt");
+		System.out.println("Start the comparison process\n"+"=====================================\n");
 		
-		writeFrequencyToFile(frequencyAnalysis("ChiperTextCBC.txt"),mainPath+"frequencyAfter.txt");
-		writeFrequencyToFile(frequencyAnalysis("PlainText.txt"),mainPath+"frequencyBefore.txt");
-		System.out.println("Done");
+		
+		String key = new String("hanubrhf");
+		
+		/*Blowfish*/
+		runBlowfish(key, plainText1,cipherText1, resultText1 );
+		runBlowfish(key, plainText2,cipherText2, resultText2 );
+		analysisOp.compareTwoFile(mainPath+cipherText1,mainPath+cipherText2);
+		
+		/*TripleDES*/
+		run3DES(key, plainText1,cipherText1, resultText1 );
+		run3DES(key, plainText2,cipherText2, resultText2 );
+		analysisOp.compareTwoFile(mainPath+cipherText1,mainPath+cipherText2);
+
+		/*AES*/
+		runAES(key, plainText1,cipherText1, resultText1 );
+		runAES(key, plainText2,cipherText2, resultText2 );
+		analysisOp.compareTwoFile(mainPath+cipherText1,mainPath+cipherText2);
+		
+		/* DCA Key should be per 8 characters length, min 8 and max 32*/
+		runCBC(key, plainText1,cipherText1, resultText1 );
+		runCBC(key, plainText2, cipherText2, resultText2 );
+		analysisOp.compareTwoFile(mainPath+cipherText1,mainPath+cipherText2);
+
+		
+//		fileOp.writeFrequencyToFile(analysisOp.frequencyAnalysis(mainPath+"ChiperTextCBC.txt"),mainPath+"frequencyAfter.txt");
+//		fileOp.writeFrequencyToFile(analysisOp.frequencyAnalysis(mainPath+"PlainText.txt"),mainPath+"frequencyBefore.txt");
+		System.out.println("====================================="
+				+ "\nEverthing's done!");
 	} 
 	
-	private static ArrayList<Integer> frequencyAnalysis(String file1) {
-		ArrayList<Integer> data1 = readFile(mainPath+file1);
-		int numbOfSameChar = 0;
-		ArrayList<Integer> arrayFrequency = new ArrayList();
-		for (int i = 0; i < 256; i++) {
-			arrayFrequency.add(0);
+	private static void run3DES (String key, String fileName, String cipherFile, String resultFile){
+		String text = fileOp.readFileAsString(mainPath+fileName);
+    	byte[] codedtext;
+		try {
+			codedtext = new TripleDESTest().encrypt(text, key);
+			fileOp.writeFileAsString(new String(codedtext), mainPath+cipherFile);
+	    	String decodedtext = new TripleDESTest().decrypt(codedtext, key);
+			fileOp.writeFileAsString(decodedtext, mainPath+resultFile);
+			// codedtext is a byte array, you'll just see a reference to an array
+	    	System.out.println("3DES done");
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
-		
-		for (int i = 0; i < data1.size(); i++) {
-			arrayFrequency.set(data1.get(i), arrayFrequency.get(data1.get(i))+1);
-		}
-		return arrayFrequency;
-	}
-	
-	private static void compareTwoFile(String file1, String file2) {
-		ArrayList<Integer> data1 = readFile(mainPath+file1);
-		ArrayList<Integer> data2 = readFile(mainPath+file2);
-		int numbOfSameChar = 0;
-		for (int i = 0; i < data2.size(); i++) {
-//			System.out.println(i);
-			if(data1.get(i).compareTo(data2.get(i))== 0){
-				numbOfSameChar++;
-			}
-		}
-		System.out.println("Tingkat kesamaan kedua file :"
-		+numbOfSameChar/(data1.size()*1.0)*100+" %");
 	}
 
-	
+	private static void runAES (String key, String fileName, String cipherFile, String resultFile){
+	    String IV = "AAAAAAAAAAAAAAAA";
+	    String plaintext = fileOp.readFileAsString(mainPath+fileName);
+	    String encryptionKey = "0123456789abcdef";
+	    AES aes = new AES();
+		try {
 
-	public static void runCBC2(String key){
+	      byte[] cipher = aes.encrypt(IV, plaintext, encryptionKey);
+	      fileOp.writeFileAsString(new String(cipher), mainPath+cipherFile);
+
+	      String decrypted = aes.decrypt(IV, cipher, encryptionKey);
+	      fileOp.writeFileAsString(decrypted, mainPath+resultFile);
+	      System.out.println("AES done");
+	    } catch (Exception e) {
+	      e.printStackTrace();
+	    } 
+	}
+	
+	private static void runBlowfish(String key, String fileName, String cipherFile, String resultFile){		String Key = "Something";
+		byte[] KeyData = Key.getBytes();
+		SecretKeySpec KS = new SecretKeySpec(KeyData, "Blowfish");
+		Cipher cipher;
+		try {
+			cipher = Cipher.getInstance("Blowfish");
+			cipher.init(Cipher.ENCRYPT_MODE, KS);
+			
+			// get the text to encrypt
+		    String inputText = fileOp.readFileAsString(mainPath+fileName);
+		    // encrypt message
+		    byte[] encrypted = cipher.doFinal(inputText.getBytes());
+		    fileOp.writeFileAsString(new String(encrypted), mainPath+cipherFile);
+
+			cipher.init(Cipher.DECRYPT_MODE, KS);
+		    // encrypt message
+		    byte[] result = cipher.doFinal(encrypted);
+
+		    fileOp.writeFileAsString(new String(result), mainPath+resultFile);
+			System.out.println("Blowfish done");
+		} catch (NoSuchAlgorithmException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoSuchPaddingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InvalidKeyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IllegalBlockSizeException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (BadPaddingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}	
+	
+	public static void runCBC(String key, String fileName, String cipherFile, String resultFile){
 		/*Create an instance of runCBC class*/
 		modeCBC cbc = new modeCBC(key);
 		
-		/*Mode Encryption*/
-			
+		/*Mode Encryption*/			
 			/*Read plain text from PlainText.txt*/
-			cbc.plainText = readFile(mainPath+"PlainText2.txt");
-			
+			cbc.plainText = fileOp.readFile(mainPath+fileName);
 			/*Start the CFB mode*/
 			cbc.cipherText = cbc.startEncryptionModeCBC(cbc.plainText);
-			
 			/*Write cipher text to ChiperText.txt*/
-			writeFile(cbc.cipherText, mainPath+"ChiperTextCBC2.txt");
+			fileOp.writeFile(cbc.cipherText, mainPath+cipherFile);
 		
 		/*Mode Decryption*/
-			
 			/*Read cipher text from ChiperText.txt*/
-			cbc.cipherText = readFile(mainPath+"ChiperTextCBC2.txt");
-			
+//			cbc.cipherText = fileOp.readFile(mainPath+cipherFile);
 			/*Start the CFB mode*/
 			cbc.resultText = cbc.startDecryptionModeCBC(cbc.cipherText);
-			
 			/*Write result text to ResultText.txt*/
-			writeFile(cbc.resultText, mainPath+"ResultTextCBC2.txt");
-			
-		System.out.println("CBC2 Success");
-	}
-	
-	public static void runCBC(String key){
-		/*Create an instance of runCBC class*/
-		modeCBC cbc = new modeCBC(key);
-		
-		/*Mode Encryption*/
-			
-			/*Read plain text from PlainText.txt*/
-			cbc.plainText = readFile(mainPath+"PlainText.txt");
-			
-			/*Start the CFB mode*/
-			cbc.cipherText = cbc.startEncryptionModeCBC(cbc.plainText);
-			
-			/*Write cipher text to ChiperText.txt*/
-			writeFile(cbc.cipherText, mainPath+"ChiperTextCBC.txt");
-		
-		/*Mode Decryption*/
-			
-			/*Read cipher text from ChiperText.txt*/
-			cbc.cipherText = readFile(mainPath+"ChiperTextCBC.txt");
-			
-			/*Start the CFB mode*/
-			cbc.resultText = cbc.startDecryptionModeCBC(cbc.cipherText);
-			
-			/*Write result text to ResultText.txt*/
-			writeFile(cbc.resultText, mainPath+"ResultTextCBC.txt");
-			
-		System.out.println("CBC Success");
-	}
-	
-	/*This function will read any file and convert the content to array of Integer
-	 * the single Integer is between 0 - 255 even though there is a special character*/
-	public static ArrayList<Integer> readFile(String path){
-		FileInputStream fis = null;
-		ArrayList<Integer> myList = new ArrayList<Integer>();
-    	try {
-			fis = new FileInputStream(path);
-			int content;
-			while ((content = fis.read()) != -1) {
-	            myList.add(content);
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		} finally {
-			try {
-				if (fis != null)
-					fis.close();
-			} catch (IOException ex) {
-				ex.printStackTrace();
-			}
-		}
-		return myList;
-	}
-
-	/*This function will write an array of Integer to the desired file*/
-	public static void writeFile(ArrayList<Integer> myList, String path){
-		BufferedOutputStream bos;
-		try {
-			bos = new BufferedOutputStream(
-			        new FileOutputStream(new File(path)));
-			for (int i = 0; i < myList.size(); i++) {
-            	bos.write(myList.get(i).intValue());
-    		}
-	        bos.close();
-		} catch (FileNotFoundException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-	
-	public static void writeFrequencyToFile(ArrayList<Integer> myList, String path){
-		PrintWriter writer;
-		try {
-			writer = new PrintWriter(path, "UTF-8");
-			for (int i = 0; i < myList.size(); i++) {
-				writer.println(myList.get(i));
-			}
-			writer.close();
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (UnsupportedEncodingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-
+			fileOp.writeFile(cbc.resultText, mainPath+resultFile);
+		System.out.println("DCA done");
+	}	
 }

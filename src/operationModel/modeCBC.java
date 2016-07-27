@@ -10,21 +10,18 @@ import java.util.Map;
 
 import algorithm.RoundKey;
 import algorithm.SubKey;
-import algorithm.BurgAlgorithm;
+import algorithm.DoubleChainingAlgorithm;
 import commonOperation.commonOperation;
 
 public class modeCBC {
 	final int  blockSize = 16; /*Bytes*/
 	/*SHA256 of the text*/
 	ArrayList<Integer> hashOfMainKey;
-	ArrayList<Integer> hashOfMsg;
-
 	final int  roundNumber = 4;
 	
 	/*Key with minimum 8 Byte length or 8 characters*
 	 * 1 character = 8 bit = 1 Byte*/	
-	ArrayList<Integer> mainKey;
-	
+	String mainKey;
 	/*Plain text that will be encrypted */
 	public ArrayList<Integer> plainText;
 	/*Chiper text that will be decrypted */
@@ -34,33 +31,28 @@ public class modeCBC {
 	
 	/*Constructor of modeCBC*/
 	public modeCBC(String key){
-		this.mainKey = commonOperation.convertStringToArrayInt(key);
+		this.mainKey = key;
 		this.plainText = new ArrayList<Integer>();
 		this.cipherText = new ArrayList<Integer>();
 		this.resultText = new ArrayList<Integer>();
 		this.hashOfMainKey = commonOperation.getHash(key);
 	}
 	
-
-	
 	public ArrayList<Integer> encrypt(RoundKey roundKey, ArrayList<Integer>  plainText){
 		ArrayList<Integer> result = new ArrayList<Integer>();
 		ArrayList<Integer> constant = hashOfMainKey;
-		BurgAlgorithm bg = new BurgAlgorithm();
+		DoubleChainingAlgorithm DC = new DoubleChainingAlgorithm();
 		/*Proceed per block*/
 		for (int i = 0 ; i < plainText.size() ; i += blockSize){
 			/*one single block = 8 Bytes*/
-			ArrayList<Integer> singleBlock= new ArrayList<Integer>();
-			for (int j = 0; j < blockSize; j++) {
-				singleBlock.add(plainText.get(i+j));
-			}
+			ArrayList<Integer> singleBlock = new ArrayList<Integer>();
+			singleBlock.addAll(plainText.subList(i, i+blockSize));
 
 			/*XOR before doing encription*/
 			singleBlock = commonOperation.XOR( singleBlock, constant);
 			/*Encription per block*/
-			singleBlock = bg.blockE(roundKey, singleBlock);
+			singleBlock = DC.blockE(roundKey, singleBlock);
 
-			
 			/*Collect the result (cipher)*/
 			result.addAll(singleBlock);	
 			
@@ -71,10 +63,9 @@ public class modeCBC {
 	}
 
 	public ArrayList<Integer> decrypt(RoundKey roundKey, ArrayList<Integer>  plainText){
-
 		ArrayList<Integer> result = new ArrayList<Integer>();		
 		ArrayList<Integer> constant = new ArrayList<Integer>();
-		BurgAlgorithm bg = new BurgAlgorithm();
+		DoubleChainingAlgorithm DC = new DoubleChainingAlgorithm();
 		for (int i = plainText.size() ; i >= blockSize ; i -= blockSize){	
 			ArrayList<Integer> currentBlock= new ArrayList<Integer>(plainText.subList(i-16, i));
 
@@ -87,7 +78,7 @@ public class modeCBC {
 			/*one single block = 4 Bytes*/
 
 			/*clone is needed to prevent memory level modification*/
-			currentBlock =  bg.blockD(roundKey, currentBlock);	
+			currentBlock =  DC.blockD(roundKey, currentBlock);	
 			
 			constant = (ArrayList<Integer>) prevBlock.clone();
 			
@@ -102,19 +93,19 @@ public class modeCBC {
 		return result;
 	}
 	
-		
 	/*Start the encryption mode CBC*/
 	public ArrayList<Integer> startEncryptionModeCBC(ArrayList<Integer> plainText){
 		plainText = commonOperation.adjustSizeOfPlaintext(plainText, blockSize);
 		ArrayList<Integer> result = (ArrayList<Integer>) plainText.clone();
 
+		SubKey subKey = new SubKey(roundNumber, mainKey);
+		subKey.generateSubKey();
+//		subKey.print();
 		/*algorithm started*/
-		for (int j = 0; j < 3; j++) {
-			SubKey subKey = new SubKey(roundNumber);
-			subKey.generateSubKey(mainKey);
-//			subKey.print();
-
+		for (int j = 0; j < 2; j++) {
+			// 4 times iteration Ek === important
 			for (int i = 0; i < roundNumber; i++) {
+//				System.out.println("no : "+i+"  "+subKey.arrayRoundKey.get(i).subKey);
 				result = encrypt(subKey.arrayRoundKey.get(i), result);
 			}
 			Collections.reverse(result);
@@ -126,14 +117,12 @@ public class modeCBC {
 	/*Start the decryption mode CBC*/
 	public ArrayList<Integer> startDecryptionModeCBC(ArrayList<Integer> plainText){
 		ArrayList<Integer> result = (ArrayList<Integer>) plainText.clone();
-		
-		/*algorithm started*/
-		for (int j = 0; j < 3; j++) {
 
+		SubKey subKey = new SubKey(roundNumber, mainKey);
+		subKey.generateSubKey();
+		/*algorithm started*/
+		for (int j = 0; j < 2; j++) {
 			Collections.reverse(result);
-			SubKey subKey = new SubKey(roundNumber);
-			subKey.generateSubKey(mainKey);
-			
 			for (int i = 0; i < roundNumber; i++) {
 				result = decrypt(subKey.arrayRoundKey.get(roundNumber-i-1), result);
 			}
