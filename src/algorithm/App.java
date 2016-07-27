@@ -70,7 +70,7 @@ public class App {
 //		fileOp.writeFrequencyToFile(analysisOp.frequencyAnalysis(mainPath+"ChiperTextCBC.txt"),mainPath+"frequencyAfter.txt");
 //		fileOp.writeFrequencyToFile(analysisOp.frequencyAnalysis(mainPath+"PlainText.txt"),mainPath+"frequencyBefore.txt");
 		System.out.println("====================================="
-				+ "\nEverthing's done!");
+				+ "\nEverything's done!");
 	} 
 	
 	private static void run3DES (String key, String fileName, String cipherFile, String resultFile){
